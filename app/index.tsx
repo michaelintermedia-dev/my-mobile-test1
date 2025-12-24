@@ -6,7 +6,10 @@ function RecordingItem({ uri, index }: { uri: string; index: number }) {
     const player = useAudioPlayer(uri);
 
     return (
-        <Pressable onPress={() => player.play()}>
+        <Pressable onPress={() => {
+            player.seekTo(0);
+            player.play();
+        }}>
             <View style={styles.recordingItem}>
                 <Text>Recording {index + 1}: {uri.split('/').pop()}</Text>
             </View>
