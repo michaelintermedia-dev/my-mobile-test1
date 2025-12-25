@@ -1,19 +1,94 @@
 import { RecordingPresets, requestRecordingPermissionsAsync, useAudioPlayer, useAudioRecorder } from 'expo-audio';
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 
 function RecordingItem({ uri, index }: { uri: string; index: number }) {
     const player = useAudioPlayer(uri);
 
+    async function uploadRecording() {
+        try {
+            console.log('Uploading', uri);
+            const formData = new FormData();
+            if (Platform.OS === 'web') {
+                const audioResponse = await fetch(uri);
+                const blob = await audioResponse.blob();
+                formData.append('file', blob, 'recording.m4a');
+            } else {
+                // @ts-ignore
+                formData.append('file', {
+                    uri: uri,
+                    name: 'recording.m4a',
+                    type: 'audio/m4a',
+                });
+            }
+
+
+            let apiUrl = 'http://localhost:5132/UploadAudio';
+
+            if (Platform.OS !== 'web') {
+                // Use the detected LAN IP for physical devices to avoid Tunnel issues
+                // If you are on the Android Emulator, '10.0.2.2' is still needed, but for physical device use LAN IP.
+                // const host = Platform.OS === 'android' ? '10.0.2.2' : '192.168.1.221';
+                const host = '192.168.1.221';
+                apiUrl = `http://${host}:5132/UploadAudio`;
+            }
+
+            console.log('Uploading to:', apiUrl);
+
+            // Create abort controller for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                    signal: controller.signal,
+                });
+
+                clearTimeout(timeoutId);
+
+                if (response.ok) {
+                    const result = await response.text();
+                    console.log('Upload successful:', result);
+                    alert('Upload successful!');
+                } else {
+                    const errorText = await response.text();
+                    console.error('Upload failed', response.status, errorText);
+                    alert(`Upload failed: ${response.status} - ${errorText}`);
+                }
+            } catch (fetchErr: any) {
+                clearTimeout(timeoutId);
+                if (fetchErr.name === 'AbortError') {
+                    console.error('Upload timeout - could not reach server');
+                    alert('Upload timeout - cannot reach server at ' + apiUrl);
+                } else {
+                    throw fetchErr; // Re-throw to outer catch
+                }
+            }
+        } catch (err: any) {
+            console.error('Upload error', err);
+            alert(`Upload error: ${err.message || err}`);
+        }
+    }
+
     return (
-        <Pressable onPress={() => {
-            player.seekTo(0);
-            player.play();
-        }}>
-            <View style={styles.recordingItem}>
-                <Text>Recording {index + 1}: {uri.split('/').pop()}</Text>
-            </View>
-        </Pressable>
+        <View style={styles.recordingItemContainer}>
+            <Pressable onPress={() => {
+                player.seekTo(0);
+                player.play();
+            }} style={styles.playbackArea}>
+                <View style={styles.recordingItem}>
+                    <Text>Recording {index + 1}: {uri.split('/').pop()}</Text>
+                </View>
+            </Pressable>
+            <Pressable onPress={uploadRecording} style={styles.saveButton}>
+                <Text style={styles.saveButtonText}>Save</Text>
+            </Pressable>
+        </View>
     );
 }
 
@@ -124,7 +199,25 @@ const styles = StyleSheet.create({
     },
     recordingItem: {
         padding: 15,
+    },
+    recordingItemContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
         borderBottomWidth: 1,
         borderBottomColor: '#eee',
+        paddingRight: 15,
+    },
+    playbackArea: {
+        flex: 1,
+    },
+    saveButton: {
+        backgroundColor: '#34C759',
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        borderRadius: 15,
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
     },
 });
