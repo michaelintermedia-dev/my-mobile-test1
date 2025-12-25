@@ -129,6 +129,45 @@ export default function Index() {
         }
     }
 
+    async function checkServerLiveness() {
+        try {
+            let apiUrl = 'http://localhost:5132/healthz/live';
+
+            if (Platform.OS !== 'web') {
+                const host = '192.168.1.221';
+                apiUrl = `http://${host}:5132/healthz/live`;
+            }
+
+            console.log('Checking server at:', apiUrl);
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                signal: controller.signal,
+            });
+
+            clearTimeout(timeoutId);
+
+            if (response.ok) {
+                const result = await response.text();
+                console.log('Server is alive:', result);
+                alert(`✅ Server is alive!\n${result}`);
+            } else {
+                console.error('Server check failed:', response.status);
+                alert(`❌ Server returned: ${response.status}`);
+            }
+        } catch (err: any) {
+            console.error('Server check error:', err);
+            if (err.name === 'AbortError') {
+                alert('❌ Server timeout - cannot reach server');
+            } else {
+                alert(`❌ Server error: ${err.message || err}`);
+            }
+        }
+    }
+
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Audio Recorder</Text>
@@ -156,6 +195,10 @@ export default function Index() {
                 )}
                 style={styles.list}
             />
+
+            <Pressable onPress={checkServerLiveness} style={styles.livenessButton}>
+                <Text style={styles.livenessButtonText}>Server Liveness Probe</Text>
+            </Pressable>
         </View>
     );
 }
@@ -219,5 +262,18 @@ const styles = StyleSheet.create({
     saveButtonText: {
         color: '#fff',
         fontWeight: 'bold',
+    },
+    livenessButton: {
+        backgroundColor: '#5856D6',
+        paddingVertical: 12,
+        paddingHorizontal: 20,
+        borderRadius: 20,
+        marginBottom: 20,
+        marginTop: 10,
+    },
+    livenessButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
