@@ -1,6 +1,9 @@
 import { RecordingPresets, requestRecordingPermissionsAsync, useAudioPlayer, useAudioRecorder } from 'expo-audio';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Notifications from 'expo-notifications';
+//import * as Device from 'expo-device';
+import '../../firebase';
 
 function RecordingItem({ uri, index }: { uri: string; index: number }) {
     const player = useAudioPlayer(uri);
@@ -102,6 +105,50 @@ export default function Index() {
     const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
     const [recordings, setRecordings] = useState<string[]>([]);
     const [isRecording, setIsRecording] = useState(false);
+
+    // useEffect(() => {
+    //     registerForPushNotifications();
+    // }, []);
+
+    // async function registerForPushNotifications() {
+    //     try {
+    //         const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    //         let finalStatus = existingStatus;
+
+    //         if (existingStatus !== 'granted') {
+    //             const { status } = await Notifications.requestPermissionsAsync();
+    //             finalStatus = status;
+    //         }
+
+    //         if (finalStatus !== 'granted') {
+    //             console.log('Push notification permission not granted');
+    //             return;
+    //         }
+
+    //         const token = await Notifications.getExpoPushTokenAsync();
+    //         console.log('Push token:', token.data);
+
+    //         let apiUrl = 'http://localhost:5132/devices/register';
+
+    //         if (Platform.OS !== 'web') {
+    //             const host = '192.168.1.221';
+    //             apiUrl = `http://${host}:5132/devices/register`;
+    //         }
+
+    //         await fetch(apiUrl, {
+    //             method: 'POST',
+    //             headers: { 'Content-Type': 'application/json' },
+    //             body: JSON.stringify({
+    //                 token,
+    //                 platform: 'ANDROID'
+    //             })
+    //         });
+
+    //     } catch (err) {
+    //         console.error('Failed to register for push notifications', err);
+    //     }
+    // }
+
 
     async function startRecording() {
         try {
