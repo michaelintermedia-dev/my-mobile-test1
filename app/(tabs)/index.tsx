@@ -1,16 +1,15 @@
 import { RecordingPresets, requestRecordingPermissionsAsync, useAudioPlayer, useAudioRecorder } from 'expo-audio';
 import { useEffect, useState } from 'react';
 import { FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import * as Notifications from 'expo-notifications';
-//import * as Device from 'expo-device';
 import '../../firebase';
+import { getApiUrl } from '../../api/client';
 
 function RecordingItem({ uri, index }: { uri: string; index: number }) {
     const player = useAudioPlayer(uri);
 
     async function uploadRecording() {
         try {
-            console.log('Uploading', uri);
+            console.log('[Upload] Starting upload:', uri);
 
             // Generate unique filename based on timestamp
             const now = new Date();
@@ -31,18 +30,8 @@ function RecordingItem({ uri, index }: { uri: string; index: number }) {
                 });
             }
 
-
-            let apiUrl = 'http://localhost:5132/UploadAudio';
-
-            if (Platform.OS !== 'web') {
-                // Use the detected LAN IP for physical devices to avoid Tunnel issues
-                // If you are on the Android Emulator, '10.0.2.2' is still needed, but for physical device use LAN IP.
-                // const host = Platform.OS === 'android' ? '10.0.2.2' : '192.168.1.221';
-                const host = '192.168.1.221';
-                apiUrl = `http://${host}:5132/UploadAudio`;
-            }
-
-            console.log('Uploading to:', apiUrl);
+            const apiUrl = getApiUrl('/UploadAudio');
+            console.log('[Upload] Uploading to:', apiUrl);
 
             // Create abort controller for timeout
             const controller = new AbortController();
@@ -62,24 +51,24 @@ function RecordingItem({ uri, index }: { uri: string; index: number }) {
 
                 if (response.ok) {
                     const result = await response.text();
-                    console.log('Upload successful:', result);
+                    console.log('[Upload] Success:', result);
                     alert('Upload successful!');
                 } else {
                     const errorText = await response.text();
-                    console.error('Upload failed', response.status, errorText);
+                    console.error('[Upload] Failed', response.status, errorText);
                     alert(`Upload failed: ${response.status} - ${errorText}`);
                 }
             } catch (fetchErr: any) {
                 clearTimeout(timeoutId);
                 if (fetchErr.name === 'AbortError') {
-                    console.error('Upload timeout - could not reach server');
+                    console.error('[Upload] Timeout');
                     alert('Upload timeout - cannot reach server at ' + apiUrl);
                 } else {
-                    throw fetchErr; // Re-throw to outer catch
+                    throw fetchErr;
                 }
             }
         } catch (err: any) {
-            console.error('Upload error', err);
+            console.error('[Upload] Error', err);
             alert(`Upload error: ${err.message || err}`);
         }
     }
@@ -105,50 +94,6 @@ export default function Index() {
     const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
     const [recordings, setRecordings] = useState<string[]>([]);
     const [isRecording, setIsRecording] = useState(false);
-
-    // useEffect(() => {
-    //     registerForPushNotifications();
-    // }, []);
-
-    // async function registerForPushNotifications() {
-    //     try {
-    //         const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    //         let finalStatus = existingStatus;
-
-    //         if (existingStatus !== 'granted') {
-    //             const { status } = await Notifications.requestPermissionsAsync();
-    //             finalStatus = status;
-    //         }
-
-    //         if (finalStatus !== 'granted') {
-    //             console.log('Push notification permission not granted');
-    //             return;
-    //         }
-
-    //         const token = await Notifications.getExpoPushTokenAsync();
-    //         console.log('Push token:', token.data);
-
-    //         let apiUrl = 'http://localhost:5132/devices/register';
-
-    //         if (Platform.OS !== 'web') {
-    //             const host = '192.168.1.221';
-    //             apiUrl = `http://${host}:5132/devices/register`;
-    //         }
-
-    //         await fetch(apiUrl, {
-    //             method: 'POST',
-    //             headers: { 'Content-Type': 'application/json' },
-    //             body: JSON.stringify({
-    //                 token,
-    //                 platform: 'ANDROID'
-    //             })
-    //         });
-
-    //     } catch (err) {
-    //         console.error('Failed to register for push notifications', err);
-    //     }
-    // }
-
 
     async function startRecording() {
         try {
@@ -184,14 +129,8 @@ export default function Index() {
 
     async function checkServerLiveness() {
         try {
-            let apiUrl = 'http://localhost:5132/healthz/live';
-
-            if (Platform.OS !== 'web') {
-                const host = '192.168.1.221';
-                apiUrl = `http://${host}:5132/healthz/live`;
-            }
-
-            console.log('Checking server at:', apiUrl);
+            const apiUrl = getApiUrl('/healthz/live');
+            console.log('[Server] Checking liveness:', apiUrl);
 
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
@@ -205,18 +144,18 @@ export default function Index() {
 
             if (response.ok) {
                 const result = await response.text();
-                console.log('Server is alive:', result);
-                alert(`✅ Server is alive!\n${result}`);
+                console.log('[Server] Alive:', result);
+                alert(`? Server is alive!\n${result}`);
             } else {
-                console.error('Server check failed:', response.status);
-                alert(`❌ Server returned: ${response.status}`);
+                console.error('[Server] Check failed:', response.status);
+                alert(`? Server returned: ${response.status}`);
             }
         } catch (err: any) {
-            console.error('Server check error:', err);
+            console.error('[Server] Error:', err);
             if (err.name === 'AbortError') {
-                alert('❌ Server timeout - cannot reach server');
+                alert('? Server timeout - cannot reach server');
             } else {
-                alert(`❌ Server error: ${err.message || err}`);
+                alert(`? Server error: ${err.message || err}`);
             }
         }
     }

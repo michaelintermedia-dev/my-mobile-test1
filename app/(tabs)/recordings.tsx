@@ -1,6 +1,7 @@
-import { useAudioPlayer } from 'expo-audio';
+﻿import { useAudioPlayer } from 'expo-audio';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { getApiUrl, apiGet } from '../../api/client';
 
 interface Recording {
     id: number;
@@ -24,31 +25,13 @@ export default function RecordingsScreen() {
             setLoading(true);
             setError(null);
 
-            let apiUrl = 'http://localhost:5132/GetRecordings';
-
-            if (Platform.OS !== 'web') {
-                const host = '192.168.1.221';
-                apiUrl = `http://${host}:5132/GetRecordings`;
-            }
-
-            console.log('Fetching recordings from:', apiUrl);
-
-            const response = await fetch(apiUrl, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                setRecordings(data);
-                console.log('Fetched recordings:', data);
-            } else {
-                setError(`Failed to fetch: ${response.status}`);
-            }
+            console.log('[Recordings] Fetching list...');
+            const data = await apiGet<Recording[]>('/GetRecordings');
+            
+            setRecordings(data);
+            console.log('[Recordings] Fetched:', data.length, 'items');
         } catch (err: any) {
-            console.error('Error fetching recordings:', err);
+            console.error('[Recordings] Fetch error:', err);
             setError(err.message || 'Failed to fetch recordings');
         } finally {
             setLoading(false);
@@ -62,16 +45,10 @@ export default function RecordingsScreen() {
 
     async function handleRecordingClick(recording: Recording) {
         try {
-            console.log('Downloading and playing:', recording.name);
+            console.log('[Playback] Starting download:', recording.name);
 
-            let apiUrl = `http://localhost:5132/DownloadAudio/${recording.name}`;
-
-            if (Platform.OS !== 'web') {
-                const host = '192.168.1.221';
-                apiUrl = `http://${host}:5132/DownloadAudio/${recording.name}`;
-            }
-
-            console.log('Playing from:', apiUrl);
+            const apiUrl = getApiUrl(`/DownloadAudio/${recording.name}`);
+            console.log('[Playback] URL:', apiUrl);
 
             if (Platform.OS === 'web') {
                 // On web, download as blob and create object URL
@@ -93,9 +70,9 @@ export default function RecordingsScreen() {
             player.play();
             setPlayingId(recording.id);
 
-            console.log('Playing audio:', recording.name);
+            console.log('[Playback] Playing:', recording.name);
         } catch (err: any) {
-            console.error('Error playing recording:', err);
+            console.error('[Playback] Error:', err);
             alert(`Failed to play recording: ${err.message}`);
         }
     }
