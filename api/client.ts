@@ -12,6 +12,8 @@ export function getApiBaseUrl(): string {
   
   const port = process.env.EXPO_PUBLIC_API_PORT || '5132';
   
+  console.log(`[API] Platform: ${Platform.OS}, Host: ${host}, Port: ${port}`);
+  
   return `http://${host}:${port}`;
 }
 
@@ -46,6 +48,8 @@ export async function apiFetch<T>(
 
     clearTimeout(timeoutId);
 
+    console.log(`[API] Response: ${response.status} ${response.statusText}`);
+
     if (!response.ok) {
       throw new Error(`API Error: ${response.status} ${response.statusText}`);
     }
@@ -53,9 +57,13 @@ export async function apiFetch<T>(
     // Handle empty responses
     const contentType = response.headers.get('content-type');
     if (contentType?.includes('application/json')) {
-      return await response.json();
+      const data = await response.json();
+      console.log(`[API] Response body:`, data);
+      return data;
     } else {
-      return (await response.text()) as T;
+      const text = await response.text();
+      console.log(`[API] Response text:`, text);
+      return text as T;
     }
   } catch (error) {
     if (error instanceof Error) {
@@ -63,7 +71,7 @@ export async function apiFetch<T>(
         console.error('[API] Timeout error:', endpoint);
         throw new Error(`Request timeout for ${endpoint}`);
       }
-      console.error('[API] Error:', error.message);
+      console.error('[API] Fetch error:', error.message);
       throw error;
     }
     throw new Error('Unknown API error');
@@ -77,6 +85,7 @@ export async function apiPost<T>(
   endpoint: string,
   data: unknown
 ): Promise<T> {
+  console.log(`[API] Sending POST data:`, data);
   return apiFetch<T>(endpoint, {
     method: 'POST',
     headers: {

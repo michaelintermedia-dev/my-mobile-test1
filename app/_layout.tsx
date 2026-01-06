@@ -17,6 +17,8 @@ async function initializePushNotifications() {
       return;
     }
 
+    console.log('[App] Got token, attempting backend register...');
+
     // Step 2: Register device with backend
     const registered = await registerDeviceWithBackend(token);
     
